@@ -577,18 +577,76 @@ function processGmailAttachment() {
   }
 }
 
-// トリガー設定用のヘルパー関数
-function createTimeDrivenTrigger() {
-  // 既存のトリガーを削除
+// メイン実行関数
+function executeAllProcesses() {
+  let errorMessages = [];
+  let successMessages = [];
+  
+  try {
+    // 1. processGmailAttachment の実行
+    console.log("1. Mysteel データの処理を開始");
+    try {
+      processGmailAttachment();
+      successMessages.push("Mysteelデータの処理が完了しました。");
+    } catch (e) {
+      errorMessages.push("Mysteelデータの処理でエラーが発生: " + e.toString());
+      console.error("Mysteelデータ処理エラー:", e);
+    }
+
+    // 2. updateAluminumPriceSheet の実行
+    console.log("2. アルミ価格データの更新を開始");
+    try {
+      const result = updateAluminumPriceSheet();
+      successMessages.push("アルミ価格データの更新が完了しました。");
+    } catch (e) {
+      errorMessages.push("アルミ価格データの更新でエラーが発生: " + e.toString());
+      console.error("アルミ価格更新エラー:", e);
+    }
+
+    // 処理結果のメール送信
+    const now = new Date();
+    const formattedDate = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy年MM月dd日 HH:mm:ss");
+    
+    let emailBody = `処理実行日時: ${formattedDate}\n\n`;
+    
+    if (successMessages.length > 0) {
+      emailBody += "成功した処理:\n" + successMessages.join("\n") + "\n\n";
+    }
+    
+    if (errorMessages.length > 0) {
+      emailBody += "エラーが発生した処理:\n" + errorMessages.join("\n");
+    }
+
+    const subject = errorMessages.length > 0 
+      ? "【一部エラー】データ更新処理完了通知" 
+      : "【成功】データ更新処理完了通知";
+
+    GmailApp.sendEmail(
+      "bestinksalesman@gmail.com, hirokisakon@kirii.com.hk",
+      subject,
+      emailBody
+    );
+
+  } catch (e) {
+    console.error("全体処理でエラーが発生:", e);
+    GmailApp.sendEmail(
+      "bestinksalesman@gmail.com, hirokisakon@kirii.com.hk",
+      "【エラー】データ更新処理エラー通知",
+      `処理実行中に重大なエラーが発生しました。\n\nエラー内容:\n${e.toString()}\n\n実行日時: ${formattedDate}`
+    );
+  }
+}
+
+// トリガー設定用の関数を更新
+function setupTriggers() {
+  // 既存のトリガーをすべて削除
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'processGmailAttachment') {
-      ScriptApp.deleteTrigger(trigger);
-    }
+    ScriptApp.deleteTrigger(trigger);
   });
   
   // 新しいトリガーを作成（5分おきに実行）
-  ScriptApp.newTrigger('processGmailAttachment')
+  ScriptApp.newTrigger('executeAllProcesses')
     .timeBased()
     .everyMinutes(5)
     .create();
