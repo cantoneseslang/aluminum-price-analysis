@@ -578,6 +578,7 @@ function processGmailAttachment() {
 }
 
 // メイン実行関数
+// GASのトリガー設定で実行されるメイン処理
 function executeAllProcesses() {
   let errorMessages = [];
   let successMessages = [];
@@ -635,21 +636,4 @@ function executeAllProcesses() {
       `処理実行中に重大なエラーが発生しました。\n\nエラー内容:\n${e.toString()}\n\n実行日時: ${formattedDate}`
     );
   }
-}
-
-// トリガー設定用の関数を更新
-function setupTriggers() {
-  // 既存のトリガーをすべて削除
-  const triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(trigger => {
-    ScriptApp.deleteTrigger(trigger);
-  });
-  
-  // 新しいトリガーを作成（5分おきに実行）
-  ScriptApp.newTrigger('executeAllProcesses')
-    .timeBased()
-    .everyMinutes(5)
-    .create();
-    
-  console.log('トリガーが正常に設定されました');
 }
